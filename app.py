@@ -25,8 +25,7 @@ if not firebase_admin._apps:
 # تصميم واجهة منصة الجعدار
 st.set_page_config(page_title="منصة الجعدار التعليمية", page_icon="🚀")
 
-st.markdown("<h1 style='text-align: center; color: #2563eb;'>🚀 منصة الجعدار - Elgedar</h1>", unsafe_content_config=True)
-
+st.markdown("<h1 style='text-align: center; color: #2563eb;'>🚀 منصة الجعدار - Elgedar</h1>", allow_unsafe_html=True)
 # نظام الدخول بالكود
 code_input = st.text_input("أدخل كود الحصة الخاص بك:", type="password", help="الكود صالح لجهاز واحد فقط")
 

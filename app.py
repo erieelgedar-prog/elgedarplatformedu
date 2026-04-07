@@ -1,10 +1,11 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
+import random
+import string
 
 # إعداد الاتصال بـ Firebase
 if not firebase_admin._apps:
-    # البيانات دي جاية من الـ JSON اللي بعتهولي
     fb_creds = {
         "type": "service_account",
         "project_id": "elgedarplatformedu",
@@ -22,36 +23,56 @@ if not firebase_admin._apps:
         'databaseURL': 'https://elgedarplatformedu-default-rtdb.firebaseio.com/'
     })
 
-# تصميم واجهة منصة الجعدار
+# إعدادات الصفحة
 st.set_page_config(page_title="منصة الجعدار التعليمية", page_icon="🚀")
 
-st.title("🚀 منصة الجعدار - Elgedar")# نظام الدخول بالكود
-code_input = st.text_input("أدخل كود الحصة الخاص بك:", type="password", help="الكود صالح لجهاز واحد فقط")
+# --- كلمة سر الأدمن (غيرها براحتك من هنا) ---
+ADMIN_KEY = "hesham123" 
+
+st.title("🚀 منصة الجعدار - Elgedar")
+
+# نظام الدخول
+code_input = st.text_input("أدخل كود الحصة الخاص بك:", type="password")
 
 if st.button("تحقق ودخول"):
-    if code_input:
+    if code_input == ADMIN_KEY:
+        st.session_state['role'] = 'admin'
+        st.success("تم الدخول بصلاحيات الأدمن يا مستر هشام!")
+    elif code_input:
         ref = db.reference(f'codes/{code_input}')
         data = ref.get()
-        
         if data:
-            st.success(f"أهلاً بك يا بطل! تم تفعيل الكود.")
-            # هنا رابط الفيديو من يوتيوب (غير مدرج)
-            st.video("https://www.youtube.com/watch?v=تحط_رابط_الفيديو_هنا")
+            if data.get('used', False):
+                st.error("عفواً، هذا الكود تم استخدامه مسبقاً على جهاز آخر!")
+            else:
+                # تحديث الكود ليصبح مستخدم
+                ref.update({'used': True})
+                st.success("أهلاً بك يا بطل! تم تفعيل الحصة.")
+                video_url = db.reference('settings/video_url').get() or "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                st.video(video_url)
         else:
-            st.error("الكود غير صحيح أو انتهت صلاحيته!")
-    else:
-        st.warning("من فضلك أدخل الكود أولاً")
+            st.error("الكود غير صحيح!")
 
-# كود النطق (JavaScript) اللي عملناه سوا
-st.components.v1.html("""
-    <script>
-    function speak(text) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'ar-SA';
-        u.rate = 0.85;
-        window.speechSynthesis.speak(u);
-    }
-    // يمكن إضافة أزرار نطق هنا لو حبيت
-    </script>
-""", height=0)
+# --- لوحة تحكم المدير (تظهر فقط للأدمن) ---
+if st.session_state.get('role') == 'admin':
+    st.divider()
+    st.header("🛠️ لوحة تحكم منصة الجعدار")
+    
+    tab1, tab2 = st.tabs(["توليد أكواد", "إعدادات الفيديو"])
+    
+    with tab1:
+        num_codes = st.number_input("عدد الأكواد المطلوب توليدها:", min_value=1, max_value=100, value=10)
+        if st.button("توليد وحفظ الأكواد"):
+            new_codes = []
+            for _ in range(num_codes):
+                c = 'GEDAR-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                db.reference(f'codes/{c}').set({'used': False})
+                new_codes.append(c)
+            st.write("تم توليد الأكواد بنجاح:")
+            st.code("\n".join(new_codes))
+            
+    with tab2:
+        new_url = st.text_input("رابط فيديو الحصة الجديد:")
+        if st.button("تحديث الرابط"):
+            db.reference('settings/video_url').set(new_url)
+            st.success("تم تحديث رابط الفيديو بنجاح!")
